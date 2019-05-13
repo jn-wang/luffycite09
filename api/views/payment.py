@@ -64,17 +64,18 @@ class PayMentViewSet(APIView):
                 coupon__valid_begin_date__lte=ctime,
                 coupon__valid_end_date__gte=ctime,
             )
-
             for item in coupon_list:
                 info = {}
                 coupon_course_id = str(item.coupon.object_id)  # 优惠卷绑定课程的id
-                coupon_id = item.id # 优惠卷ID
+                coupon_id = str(item.id) # 优惠卷ID
                 coupon_type = item.coupon.coupon_type #优惠卷类型：满减，折扣，立减
+
                 info['coupon_type'] = coupon_type
                 info['coupon_display'] = item.coupon.get_coupon_type_display()
-
                 if not item.coupon.object_id:
                     info = {}
+                    info['coupon_type'] = coupon_type
+                    info['coupon_display'] = item.coupon.get_coupon_type_display()
                     if coupon_type == 0:  # 立减卷
                         info['money_equivalent_value'] = item.coupon.money_equivalent_value
                     elif coupon_type == 1:  # 满减卷
@@ -82,11 +83,8 @@ class PayMentViewSet(APIView):
                         info['minimum_consume'] = item.coupon.minimum_consume
                     else:# 折扣卷
                         info['off_percent'] = item.coupon.off_percent
-                    # print(info)
                     global_coupon_dict["coupon"][coupon_id] = info
-                    # print(global_coupon_dict)
                     continue
-
                 if coupon_type == 0:# 立减卷
                     info['money_equivalent_value'] = item.coupon.money_equivalent_value
                 elif coupon_type == 1:# 满减卷
@@ -94,40 +92,32 @@ class PayMentViewSet(APIView):
                     info['minimum_consume'] = item.coupon.minimum_consume
                 else:# 折扣卷
                     info['off_percent'] = item.coupon.off_percent
-
                 if coupon_course_id not in payment_dict:
                     continue
 
                 payment_dict[coupon_course_id]['coupon'][coupon_id] = info
-                # 可以获取绑定的油糊圈
-                # print(global_coupon_dict)
-                # print(payment_dict)
-                # 将优惠卷设置到制定的课程中，写入redis中（结算中心）
-                # binfo = {
-                #     "coupon": {},
-                # }
 
-                # for cid,cinfo in payment_dict.items():
-                #     pay_key = settings.PAYMENT_KEY %(request.auth.user_id,cid,)
-                #     binfo['coupon'] = json.dumps(cinfo['coupon'])
-                #     self.conn.hmset(pay_key,binfo)
-            #将全栈的优惠券写入redis
-                # gcoupon_key = settings.PAYMENT_COUPON_KEY %(request.auth.user_id,)
-                # self.conn.hmset(gcoupon_key,global_coupon_dict)
-                #
-                # for key in self.conn.scan_iter(gcoupon_key):
-                #     coupon = self.conn.hget(key, 'coupon')
-                #     print(coupon)
-                print(global_coupon_dict)
-                print(payment_dict)
-                # print(self.conn.hget(gcoupon_key))
+                # 将优惠卷设置到制定的课程中，写入redis中（结算中心）
+
+            for cid,cinfo in payment_dict.items():
+                pay_key = settings.PAYMENT_KEY %(request.auth.user_id,cid,)
+                cinfo['coupon'] = json.dumps(cinfo['coupon'])
+                print(cinfo['coupon'])
+                self.conn.hmset(pay_key,cinfo)
+                # 将全栈的优惠券写入redis
+
+
+            gcoupon_key = settings.PAYMENT_COUPON_KEY %(request.auth.user_id,)
+            global_coupon_dict['coupon'] = json.dumps(global_coupon_dict['coupon'])
+            self.conn.hmset(gcoupon_key,global_coupon_dict)
+
             self.ret.data=payment_dict
-            # 2.获取当前用户的所有优惠卷
         except Exception as e:
             self.ret.code=1001
             self.ret.error='报错啦'
         return Response(self.ret.dict)
 
+    # 修改优惠券
     def patch(self,request,*args,**kwargs):
         # print(request.data)
         try:
@@ -136,6 +126,8 @@ class PayMentViewSet(APIView):
             coupon_id = str(request.data.get('couponid'))
 
             redis_global_coupon_key = settings.PAYMENT_COUPON_KEY %(request.auth.user_id,)
+            redis_payment_key = settings.PAYMENT_KEY %(request.auth.user_id,course_id,)
+
             if not course_id:
                 # 修改全站优惠券
                 if coupon_id == '0':
@@ -144,17 +136,68 @@ class PayMentViewSet(APIView):
                     self.ret.data = "修改成功"
                     return Response(self.ret.dict)
                 # 用优惠券,请求：{"couponid":*}
-                print(self.conn.hget(redis_global_coupon_key,'coupon'))
-                coupon_dict = json.loads(self.conn.hget(settings.PAYMENT_COUPON_KEY %(request.auth.user_id,),'coupon').decode('utf-8'))
+                coupon_dict = json.loads(self.conn.hget(redis_global_coupon_key,'coupon').decode('utf-8'))
                 print(coupon_dict)
+                #判断用户选择的优惠券是否合法
+                if coupon_id not in coupon_dict:
+                    self.ret.code = 1001
+                    self.ret.error = "优惠券不存在"
+                    return Response(self.ret.dict)
+
+                gcoupon_key = settings.PAYMENT_COUPON_KEY % (request.auth.user_id,)
+                self.conn.hset(redis_global_coupon_key, 'default_coupon', coupon_id)
+
+            if coupon_id == "0":
+                self.conn.hset(redis_payment_key,'default_coupon',course_id)
+                self.ret.data = "修改成功"
+                return Response(self.ret.dict)
+            coupon_dict = json.loads(self.conn.hget(redis_payment_key, 'coupon').decode('utf-8'))
+            print(coupon_dict)
+            if course_id not in coupon_dict:
+                self.ret.code = 1003
+                self.ret.error = "课程优惠券不存在"
+                return Response(self.ret.dict)
+            self.conn.hset(redis_payment_key,'default_coupon',course_id)
         except Exception as e:
-            self.ret.code = 1001
-            self.ret.error = "报错了"
-
-        return Response(',,,')
-
+            self.ret.code = 1002
+            self.ret.error = "报错了,修改失败"
+        return Response(self.ret.dict)
 
 
+    def get(self,request,*args,**kwargs):
+        try:
+            redis_payment_key = settings.PAYMENT_KEY %(request.auth.user_id,"*")
+            redis_global_coupon_key = settings.PAYMENT_COUPON_KEY % (request.auth.user_id,)
+
+            # 1.获取绑定的课程信息
+            course_list = []
+            for key in self.conn.scan_iter(redis_payment_key):
+                info = {}
+                data = self.conn.hgetall(key)
+                for k,v in data.items():
+                    kk = k.decode('utf-8')
+                    if kk == "coupon":
+                        info[kk] = json.loads(v.decode('utf-8'))
+                    else:
+                        info[kk] = v.decode('utf-8')
+                course_list.append(info)
+                print(course_list)
+
+            # 全站优惠券
+            global_coupon_dict = {
+                'coupon':json.loads(self.conn.hget(redis_global_coupon_key,'coupon').decode('utf-8')),
+                'default_coupon':self.conn.hget(redis_global_coupon_key,'default_coupon').decode('utf-8')
+            }
+            # print(global_coupon_dict)
+
+            self.ret.data = {
+                'course_list':course_list,
+                'global_coupon_dict':global_coupon_dict
+            }
+        except Exception as e:
+            self.ret.code=1001
+            self.ret.error='获取优惠券信息错误'
+        return Response(self.ret.dict)
 
 
 

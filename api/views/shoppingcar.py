@@ -123,7 +123,7 @@ class ShoopingCarViewSet(APIView):
         ret = BaseResponse()
         try:
             current_user_id = request.auth.user_id
-            key_match = settings.SHOPPING_CAR_KEY %(request.auth.user_id,"*")
+            key_match = settings.SHOPPING_CAR_KEY %(current_user_id,"*")
             course_list = []
             for key in self.conn.scan_iter(key_match,count=10):
                 # course_info = self.conn.hgetall(key)

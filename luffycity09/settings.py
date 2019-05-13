@@ -138,5 +138,6 @@ REST_FRAMEWORK = {
 SHOPPING_CAR_KEY = "shopping_car_%s_%s"
 
 PAYMENT_KEY = "payment_key_%s_%s"
+PAYMENT_ALL_KEY = "payment_key_%s_%s"
 PAYMENT_COUPON_KEY = "payment_coupon_key_%s"
 

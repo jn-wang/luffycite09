@@ -36,7 +36,7 @@ print(conn.keys())
 # print(conn.keys())
 #
 #
-# for key in conn.scan_iter("payment_coupon_key_1"):
+# for key in conn.scan_iter():
 #     coupon = conn.hget(key, 'coupon')
 #     print(coupon)
 
@@ -46,3 +46,17 @@ print(conn.keys())
 # }
 #
 # conn.hmset("payment_coupon_key_1",global_coupon_dict)
+
+# course_list = []
+# for key in conn.scan_iter('payment_coupon_key_1'):
+#     info = {
+#         "title" : conn.hget(key, 'title').decode('utf-8'),
+#         "img" : conn.hget(key, 'img').decode('utf-8'),
+#         "policy" : conn.hget(key, 'policy').decode('utf-8'),
+#         "default_policy" : conn.hget(key, 'default_policy').decode('utf-8'),
+#         }
+#     course_list.append(info)
+# print(course_list)
+# gcoupon_key = settings.PAYMENT_COUPON_KEY %("1",)
+# for key in conn.scan_iter('payment_coupon_key_1'):
+#     coupon = conn.hget(key, 'coupon')
