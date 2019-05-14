@@ -12,7 +12,6 @@ class UserInfo(models.Model):
     tel = models.CharField(max_length=64,verbose_name="电话",null=True)
     class Meta:
         verbose_name_plural = "20.用户表"
-
 class UserToken(models.Model):
     user = models.OneToOneField(to="UserInfo")
     token = models.CharField(max_length=64)
@@ -63,7 +62,6 @@ class Course(models.Model):
 
     class Meta:
         verbose_name_plural = "06.专题课或学位课模块"
-
 class CourseDetail(models.Model):
     """课程详情页内容"""
     course = models.OneToOneField("Course")
@@ -82,7 +80,6 @@ class CourseDetail(models.Model):
 
     class Meta:
         verbose_name_plural = "07.课程或学位模块详细"
-
 class OftenAskedQuestion(models.Model):
     """常见问题"""
     content_type = models.ForeignKey(ContentType)  # 关联course or degree_course
@@ -100,7 +97,6 @@ class OftenAskedQuestion(models.Model):
     class Meta:
         unique_together = ('content_type', 'object_id', 'question')
         verbose_name_plural = "08. 常见问题"
-
 class CourseOutline(models.Model):
     """课程大纲"""
     course_detail = models.ForeignKey("CourseDetail")
@@ -116,7 +112,6 @@ class CourseOutline(models.Model):
     class Meta:
         unique_together = ('course_detail', 'title')
         verbose_name_plural = "09. 课程大纲"
-
 class CourseChapter(models.Model):
     """课程章节"""
     course = models.ForeignKey("Course", related_name='coursechapters')
@@ -131,7 +126,6 @@ class CourseChapter(models.Model):
 
     def __str__(self):
         return "%s:(第%s章)%s" % (self.course, self.chapter, self.name)
-
 class CourseSection(models.Model):
     """课时目录"""
     chapter = models.ForeignKey("CourseChapter", related_name='coursesections')
@@ -150,7 +144,6 @@ class CourseSection(models.Model):
 
     def __str__(self):
         return "%s-%s" % (self.chapter, self.name)
-
 class Homework(models.Model):
     chapter = models.ForeignKey("CourseChapter")
     title = models.CharField(max_length=128, verbose_name="作业题目")
@@ -170,7 +163,6 @@ class Homework(models.Model):
 
     def __str__(self):
         return "%s - %s" % (self.chapter, self.title)
-
 class PricePolicy(models.Model):
     """价格与有课程效期表"""
     content_type = models.ForeignKey(ContentType)  # 关联course or degree_course
@@ -195,7 +187,6 @@ class PricePolicy(models.Model):
 
     def __str__(self):
         return "%s(%s)%s" % (self.content_object, self.get_valid_period_display(), self.price)
-
 class CourseCategory(models.Model):
     """课程大类, e.g 前端  后端..."""
     name = models.CharField(max_length=64, unique=True)
@@ -205,7 +196,6 @@ class CourseCategory(models.Model):
 
     class Meta:
         verbose_name_plural = "01.课程大类"
-
 class CourseSubCategory(models.Model):
     """课程子类, e.g python linux """
     category = models.ForeignKey("CourseCategory")
@@ -216,7 +206,6 @@ class CourseSubCategory(models.Model):
 
     class Meta:
         verbose_name_plural = "02.课程子类"
-
 class DegreeCourse(models.Model):
     """学位课程"""
     name = models.CharField(max_length=128, unique=True)
@@ -239,7 +228,6 @@ class DegreeCourse(models.Model):
 
     class Meta:
         verbose_name_plural = "03.学位课"
-
 class Teacher(models.Model):
     """讲师、导师表"""
     name = models.CharField(max_length=32)
@@ -255,7 +243,6 @@ class Teacher(models.Model):
 
     class Meta:
         verbose_name_plural = "04.导师或讲师"
-
 class Scholarship(models.Model):
     """学位课程奖学金"""
     degree_course = models.ForeignKey("DegreeCourse")
@@ -267,7 +254,6 @@ class Scholarship(models.Model):
 
     class Meta:
         verbose_name_plural = "05.学位课奖学金"
-
 class Coupon(models.Model):
     name = models.CharField(max_length=64,verbose_name="活动名称")
     brief = models.TextField(blank=True,null=True,verbose_name="优惠卷介绍")
@@ -310,7 +296,6 @@ class Coupon(models.Model):
             if self.close_date < self.open_date:
                 raise ValueError("close_data 优惠卷领取结束时间必须晚于open_data优惠卷领取时间")
             super(Coupon,self).save(*args,**kwargs)
-
 class CouponRecord(models.Model):
     coupon = models.ForeignKey("Coupon")
     number = models.CharField(max_length=64,unique=True)
@@ -326,51 +311,250 @@ class CouponRecord(models.Model):
 
     def __str__(self):
         return '%s-%s-%s' %(self.account,self.number,self.status)
+class CourseSchedule(models.Model):
+    """课程进度计划表,针对学位课程，每开通一个模块，就为这个学员生成这个模块的推荐学习计划表，后面的奖惩均按此表进行"""
+    study_record = models.ForeignKey("StudyRecord")
+    homework = models.ForeignKey("Homework")
+    recommend_date = models.DateField("推荐交作业日期")
 
-# class CourseReview(models.Model):
-#     """课程评价"""
-#     enrolled_course = models.OneToOneField("EnrolledCourse")
-#     about_teacher = models.FloatField(default=0, verbose_name="讲师讲解是否清晰")
-#     about_video = models.FloatField(default=0, verbose_name="内容实用")
-#     about_course = models.FloatField(default=0, verbose_name="课程内容通俗易懂")
-#     review = models.TextField(max_length=1024, verbose_name="评价")
-#     disagree_number = models.IntegerField(default=0, verbose_name="踩")
-#     agree_number = models.IntegerField(default=0, verbose_name="赞同数")
-#     tags = models.ManyToManyField("Tags", blank=True, verbose_name="标签")
-#     date = models.DateTimeField(auto_now_add=True, verbose_name="评价日期")
-#     is_recommend = models.BooleanField("热评推荐", default=False)
-#     hide = models.BooleanField("不在前端页面显示此条评价", default=False)
-#
-#     def __str__(self):
-#         return "%s-%s" % (self.enrolled_course.course, self.review)
-#
-#     class Meta:
-#         verbose_name_plural = "13. 课程评价（购买课程后才能评价）"
-#
-#
-# class DegreeCourseReview(models.Model):
-#     """学位课程评价
-#     为了以后可以定制单独的评价内容，所以不与普通课程的评价混在一起，单独建表
-#     """
-#     enrolled_course = models.ForeignKey("EnrolledDegreeCourse")
-#     course = models.ForeignKey("Course", verbose_name="评价学位模块", blank=True, null=True,
-#                                help_text="不填写即代表评价整个学位课程", limit_choices_to={'course_type': 2})
-#     about_teacher = models.FloatField(default=0, verbose_name="讲师讲解是否清晰")
-#     about_video = models.FloatField(default=0, verbose_name="视频质量")
-#     about_course = models.FloatField(default=0, verbose_name="课程")
-#     review = models.TextField(max_length=1024, verbose_name="评价")
-#     disagree_number = models.IntegerField(default=0, verbose_name="踩")
-#     agree_number = models.IntegerField(default=0, verbose_name="赞同数")
-#     tags = models.ManyToManyField("Tags", blank=True, verbose_name="标签")
-#     date = models.DateTimeField(auto_now_add=True, verbose_name="评价日期")
-#     is_recommend = models.BooleanField("热评推荐", default=False)
-#     hide = models.BooleanField("不在前端页面显示此条评价", default=False)
-#
-#     def __str__(self):
-#         return "%s-%s" % (self.enrolled_course, self.review)
-#
-#     class Meta:
-#         verbose_name_plural = "14. 学位课评价（购买课程后才能评价）"
+    def __str__(self):
+        return "%s - %s - %s " % (self.study_record, self.homework, self.recommend_date)
 
+    class Meta:
+        unique_together = ('study_record', 'homework')
+        verbose_name_plural = "33. 课程模块计划表（学位课）"
+class EnrolledCourse(models.Model):
+    """已报名课程,不包括学位课程"""
+    account = models.ForeignKey("UserInfo")
+    course = models.ForeignKey("Course", limit_choices_to=~Q(course_type=2))
+    enrolled_date = models.DateTimeField(auto_now_add=True)
+    valid_begin_date = models.DateField(verbose_name="有效期开始自")
+    valid_end_date = models.DateField(verbose_name="有效期结束至")
+    status_choices = ((0, '已开通'), (1, '已过期'))
+    status = models.SmallIntegerField(choices=status_choices, default=0)
+    order_detail = models.OneToOneField("OrderDetail")  # 使订单购买后支持 课程评价
 
+    # order = models.ForeignKey("Order",blank=True,null=True)
 
+    def __str__(self):
+        return "%s:%s" % (self.account, self.course)
+
+    class Meta:
+        verbose_name_plural = "34. 报名专题课"
+class DegreeRegistrationForm(models.Model):
+    """学位课程报名表"""
+    enrolled_degree = models.OneToOneField("EnrolledDegreeCourse")
+    current_company = models.CharField(max_length=64, )
+    current_position = models.CharField(max_length=64, )
+    current_salary = models.IntegerField()
+    work_experience_choices = ((0, "应届生"),
+                               (1, "1年"),
+                               (2, "2年"),
+                               (3, "3年"),
+                               (4, "4年"),
+                               (5, "5年"),
+                               (6, "6年"),
+                               (7, "7年"),
+                               (8, "8年"),
+                               (9, "9年"),
+                               (10, "10年"),
+                               (11, "超过10年"),
+                               )
+    work_experience = models.IntegerField()
+    open_module = models.BooleanField("是否开通第1模块", default=True)
+    stu_specified_mentor = models.CharField("学员自行指定的导师名", max_length=32, blank=True, null=True)
+    study_plan_choices = ((0, "1-2小时/天"),
+                          (1, "2-3小时/天"),
+                          (2, "3-5小时/天"),
+                          (3, "5小时+/天"),
+                          )
+    study_plan = models.SmallIntegerField(choices=study_plan_choices, default=1)
+    why_take_this_course = models.TextField("报此课程原因", max_length=1024)
+    why_choose_us = models.TextField("为何选路飞", max_length=1024)
+    your_expectation = models.TextField("你的期待", max_length=1024)
+    memo = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "35. 报名表（学位课）"
+
+    def __str__(self):
+        return "%s" % self.enrolled_degree
+class EnrolledDegreeCourse(models.Model):
+    """已报名的学位课程"""
+    account = models.ForeignKey("UserInfo")
+    degree_course = models.ForeignKey("DegreeCourse")
+    enrolled_date = models.DateTimeField(auto_now_add=True)
+    valid_begin_date = models.DateField(verbose_name="有效期开始自", blank=True, null=True)  # 开通第一个模块时，再添加课程有效期，2年
+    valid_end_date = models.DateField(verbose_name="有效期结束至", blank=True, null=True)
+    status_choices = (
+        (0, '在学中'),
+        (1, '休学中'),
+        (2, '已毕业'),
+        (3, '超时结业'),
+        (4, '未开始'),
+        # (3, '其它'),
+    )
+    study_status = models.SmallIntegerField(choices=status_choices, default=0)
+    mentor = models.ForeignKey("UserInfo", verbose_name="导师", related_name='my_students',
+                               blank=True, null=True, limit_choices_to={'role': 1})
+    mentor_fee_balance = models.PositiveIntegerField("导师费用余额", help_text="这个学员的导师费用，每有惩罚，需在此字段同时扣除")
+    order_detail = models.OneToOneField("OrderDetail")  # 使订单购买后支持填写报名表
+
+    def __str__(self):
+        return "%s:%s" % (self.account, self.degree_course)
+
+    class Meta:
+        unique_together = ('account', 'degree_course')
+        verbose_name_plural = "36. 报名学位课"
+class Order(models.Model):
+    """订单"""
+    payment_type_choices = ((0, '微信'), (1, '支付宝'), (2, '优惠码'), (3, '贝里'))
+    payment_type = models.SmallIntegerField(choices=payment_type_choices)
+
+    payment_number = models.CharField(max_length=128, verbose_name="支付第3方订单号", null=True, blank=True)
+    order_number = models.CharField(max_length=128, verbose_name="订单号", unique=True)  # 考虑到订单合并支付的问题
+    account = models.ForeignKey("UserInfo")
+    actual_amount = models.FloatField(verbose_name="实付金额")
+
+    status_choices = ((0, '交易成功'), (1, '待支付'), (2, '退费申请中'), (3, '已退费'), (4, '主动取消'), (5, '超时取消'))
+    status = models.SmallIntegerField(choices=status_choices, verbose_name="状态")
+    date = models.DateTimeField(auto_now_add=True, verbose_name="订单生成时间")
+    pay_time = models.DateTimeField(blank=True, null=True, verbose_name="付款时间")
+    cancel_time = models.DateTimeField(blank=True, null=True, verbose_name="订单取消时间")
+
+    class Meta:
+        verbose_name_plural = "37. 订单表"
+
+    def __str__(self):
+        return "%s" % self.order_number
+class OrderDetail(models.Model):
+    """订单详情"""
+    order = models.ForeignKey("Order")
+
+    content_type = models.ForeignKey(ContentType)  # 可关联普通课程或学位
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    original_price = models.FloatField("课程原价")
+    price = models.FloatField("折后价格")
+    content = models.CharField(max_length=255, blank=True, null=True)  # ？
+    valid_period_display = models.CharField("有效期显示", max_length=32)  # 在订单页显示
+    valid_period = models.PositiveIntegerField("有效期(days)")  # 课程有效期
+    memo = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return "%s - %s - %s" % (self.order, self.content_type, self.price)
+
+    class Meta:
+        verbose_name_plural = "38. 订单详细"
+        unique_together = ("order", 'content_type', 'object_id')
+class StudyRecord(models.Model):
+    """学位课程的模块学习进度，报名学位课程后，每个模块会立刻生成一条学习纪录"""
+    enrolled_degree_course = models.ForeignKey("EnrolledDegreeCourse")
+    course_module = models.ForeignKey("Course", verbose_name="学位模块", limit_choices_to={'course_type': 2})
+    open_date = models.DateField(blank=True, null=True, verbose_name="开通日期")
+    end_date = models.DateField(blank=True, null=True, verbose_name="完成日期")
+    status_choices = ((2, '在学'), (1, '未开通'), (0, '已完成'))
+    status = models.SmallIntegerField(choices=status_choices, default=1)
+
+    class Meta:
+        verbose_name_plural = "39. 学习记录表（报名学位课程后，每个模块会立刻生成一条学习纪录）"
+        unique_together = ('enrolled_degree_course', 'course_module')
+
+    def __str__(self):
+        return '%s-%s' % (self.enrolled_degree_course, self.course_module)
+
+    def save(self, *args, **kwargs):
+        if self.course_module.degree_course_id != self.enrolled_degree_course.degree_course_id:
+            raise ValueError("学员要开通的模块必须与其报名的学位课程一致！")
+
+        super(StudyRecord, self).save(*args, **kwargs)
+class TransactionRecord(models.Model):
+    """贝里交易纪录"""
+    account = models.ForeignKey("UserInfo")
+    amount = models.IntegerField("金额")
+    # balance = models.IntegerField("账户余额")
+    transaction_type_choices = ((0, '收入'), (1, '支出'), (2, '退款'), (3, "提现"))  # 2 为了处理 订单过期未支付时，锁定期贝里的回退
+    transaction_type = models.SmallIntegerField(choices=transaction_type_choices)
+
+    content_type = models.ForeignKey(ContentType, blank=True, null=True)
+    object_id = models.PositiveIntegerField(blank=True, null=True, verbose_name="关联对象")
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    transaction_number = models.CharField(unique=True, verbose_name="流水号", max_length=128)
+    date = models.DateTimeField(auto_now_add=True)
+    memo = models.CharField(max_length=128, blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "40. 贝里交易记录"
+
+    def __str__(self):
+        return "%s" % self.transaction_number
+class HomeworkRecord(models.Model):
+    """学员作业记录及成绩"""
+    homework = models.ForeignKey("Homework")
+    student = models.ForeignKey("EnrolledDegreeCourse", verbose_name="学生")
+    score_choices = ((100, 'A+'),
+                     (90, 'A'),
+                     (85, 'B+'),
+                     (80, 'B'),
+                     (70, 'B-'),
+                     (60, 'C+'),
+                     (50, 'C'),
+                     (40, 'C-'),
+                     (-1, 'D'),
+                     (0, 'N/A'),
+                     (-100, 'COPY'),
+                     )
+    score = models.SmallIntegerField(verbose_name="分数", choices=score_choices, null=True, blank=True)
+    mentor = models.ForeignKey("UserInfo", related_name="my_stu_homework_record", limit_choices_to={'role': 1},
+                               verbose_name="导师")
+    mentor_comment = models.TextField(verbose_name="导师批注", blank=True, null=True)  # 导师
+    status_choice = (
+        (0, '待批改'),
+        (1, '已通过'),
+        (2, '不合格'),
+    )
+    status = models.SmallIntegerField(verbose_name='作业状态', choices=status_choice, default=0)
+
+    submit_num = models.SmallIntegerField(verbose_name='提交次数', default=0)
+    correct_date = models.DateTimeField('备注日期', blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+    date = models.DateTimeField("作业提交日期", auto_now_add=True)
+
+    check_date = models.DateTimeField("批改日期", null=True, blank=True)
+
+    update_time = models.DateTimeField(auto_now=True, verbose_name="提交日期")
+
+    # homework_path = models.CharField(verbose_name='作业路径', max_length=256,blank=True,null=True) 作业路径可以动态拿到，没必要存
+
+    reward_choice = ((0, '新提交'),
+                     (1, '按时提交'),
+                     (2, '未按时提交'),
+                     (3, '成绩已奖励'),
+                     (4, '成绩已处罚'),
+                     (5, '未作按时检测'),
+                     )
+    reward_status = models.SmallIntegerField(verbose_name='作业记录奖惩状态', default=0)
+
+    def __str__(self):
+        return "%s %s" % (self.homework, self.student)
+
+    class Meta:
+        verbose_name_plural = "41. 作业"
+        unique_together = ("homework", "student")
+class StuFollowUpRecord(models.Model):
+    """学员跟进记录"""
+    enrolled_degree_course = models.ForeignKey("EnrolledDegreeCourse", verbose_name="学生")
+    mentor = models.ForeignKey("UserInfo", related_name='mentor', limit_choices_to={'role': 1}, verbose_name="导师")
+    followup_tool_choices = ((0, 'QQ'), (1, '微信'), (2, '电话'), (3, '系统通知'))
+    followup_tool = models.SmallIntegerField(choices=followup_tool_choices, default=1)
+    record = models.TextField(verbose_name="跟进记录")
+    attachment_path = models.CharField(max_length=128, blank=True, null=True, verbose_name="附件路径", help_text="跟进记录的截图等")
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "42. 学员跟进记录"
+
+    def __str__(self):
+        return "%s --%s --%s" % (self.enrolled_degree_course, self.record, self.date)

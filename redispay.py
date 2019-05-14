@@ -7,8 +7,8 @@ import json
 from django.conf import settings
 conn = redis.Redis(host='118.24.21.110', port=6379, password='asdf1234')
 
-# conn.flushall()
-print(conn.keys())
+conn.flushall()
+# print(conn.keys())
 # # print(conn.hgetall('shopping_car_1_1'))
 # print(conn.hget('shopping_car_1_1','title'))
 # title = conn.hget('shopping_car_1_1','title')

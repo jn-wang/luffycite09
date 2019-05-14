@@ -9,7 +9,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.viewsets import ViewSetMixin
-
 from django_redis import get_redis_connection
 from api.utils.exception import PricePolicyInvalid
 from api.utils.response import BaseResponse
@@ -49,7 +48,8 @@ class PayMentViewSet(APIView):
                     'img' : self.conn.hget(car_key, 'img').decode('utf-8'),
                     'policy_id':str(couser_id),
                     'coupon':{},
-                    'default_policy':0
+                    'default_policy':0,
+                    "default_coupon":0,
                 }
                 payment_course_dict.update(policy_info)
                 payment_dict[str(couser_id)] = payment_course_dict
@@ -83,6 +83,7 @@ class PayMentViewSet(APIView):
                         info['minimum_consume'] = item.coupon.minimum_consume
                     else:# 折扣卷
                         info['off_percent'] = item.coupon.off_percent
+                    print(info)
                     global_coupon_dict["coupon"][coupon_id] = info
                     continue
                 if coupon_type == 0:# 立减卷
@@ -102,16 +103,15 @@ class PayMentViewSet(APIView):
             for cid,cinfo in payment_dict.items():
                 pay_key = settings.PAYMENT_KEY %(request.auth.user_id,cid,)
                 cinfo['coupon'] = json.dumps(cinfo['coupon'])
-                print(cinfo['coupon'])
                 self.conn.hmset(pay_key,cinfo)
                 # 将全栈的优惠券写入redis
-
 
             gcoupon_key = settings.PAYMENT_COUPON_KEY %(request.auth.user_id,)
             global_coupon_dict['coupon'] = json.dumps(global_coupon_dict['coupon'])
             self.conn.hmset(gcoupon_key,global_coupon_dict)
-
+            print(payment_dict)
             self.ret.data=payment_dict
+
         except Exception as e:
             self.ret.code=1001
             self.ret.error='报错啦'
@@ -119,7 +119,6 @@ class PayMentViewSet(APIView):
 
     # 修改优惠券
     def patch(self,request,*args,**kwargs):
-        # print(request.data)
         try:
             course = request.data.get('courseid')
             course_id = str(course) if course else course
@@ -133,8 +132,10 @@ class PayMentViewSet(APIView):
                 if coupon_id == '0':
                     # 不适用优惠券,请求：{"couponid":0}
                     self.conn.hset('payment_global_coupon_1','default_coupon',coupon_id)
+                    self.ret.code=1000
                     self.ret.data = "修改成功"
                     return Response(self.ret.dict)
+
                 # 用优惠券,请求：{"couponid":*}
                 coupon_dict = json.loads(self.conn.hget(redis_global_coupon_key,'coupon').decode('utf-8'))
                 print(coupon_dict)
@@ -143,21 +144,23 @@ class PayMentViewSet(APIView):
                     self.ret.code = 1001
                     self.ret.error = "优惠券不存在"
                     return Response(self.ret.dict)
-
-                gcoupon_key = settings.PAYMENT_COUPON_KEY % (request.auth.user_id,)
                 self.conn.hset(redis_global_coupon_key, 'default_coupon', coupon_id)
+                self.ret.data = "修改成功"
+                return Response(self.ret.dict)
 
             if coupon_id == "0":
-                self.conn.hset(redis_payment_key,'default_coupon',course_id)
+                self.conn.hset(redis_payment_key,'default_coupon',coupon_id)
                 self.ret.data = "修改成功"
                 return Response(self.ret.dict)
             coupon_dict = json.loads(self.conn.hget(redis_payment_key, 'coupon').decode('utf-8'))
             print(coupon_dict)
+
             if course_id not in coupon_dict:
                 self.ret.code = 1003
                 self.ret.error = "课程优惠券不存在"
                 return Response(self.ret.dict)
-            self.conn.hset(redis_payment_key,'default_coupon',course_id)
+            self.conn.hset(redis_payment_key,'default_coupon',coupon_id)
+            self.ret.data = "修改成功"
         except Exception as e:
             self.ret.code = 1002
             self.ret.error = "报错了,修改失败"
